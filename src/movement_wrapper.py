@@ -134,7 +134,7 @@ def movement_wrapper_node():
 
     sub_current_position  = rospy.Subscriber('odom',       Odometry,     handle_sub_odom, queue_size=1)
     global PUB_CMDVEL
-    PUB_CMDVEL            = rospy.Publisher('cmd_vel',     Twist)
+    PUB_CMDVEL            = rospy.Publisher('cmd_vel',     Twist, queue_size=1)
 
     rospy.spin()
 
