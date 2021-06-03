@@ -1,0 +1,5 @@
+<launch>
+  <rosparam command="load" file="$(find movement_utils)/config/default.yaml" />
+
+  <node name="movement_wrapper" pkg="movement_utils" type="movement_wrapper.py" />
+</launch>
