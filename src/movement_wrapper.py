@@ -15,13 +15,13 @@ from typing import Tuple
 from math import asin, atan2, degrees, sqrt
 
 # set these via rosparam
-SCALING_FACTOR:int           = 1
-LINEAR_TRAVEL_PER_STEP:int   = 0
-LINEAR_TRAVEL_THRESHOLD:int  = 0
-LINEAR_VEL:int               = 0
-ANGULAR_TRAVEL_PER_STEP:int  = 0
-ANGULAR_TRAVEL_THRESHOLD:int = 0
-ANGULAR_VEL:int              = 0
+SCALING_FACTOR:float           = 1
+LINEAR_TRAVEL_PER_STEP:float   = 0
+LINEAR_TRAVEL_THRESHOLD:float  = 0
+LINEAR_VEL:float               = 0
+ANGULAR_TRAVEL_PER_STEP:float  = 0
+ANGULAR_TRAVEL_THRESHOLD:float = 0
+ANGULAR_VEL:float              = 0
 TWIST_CCW:Twist              = Twist()
 TWIST_CW:Twist               = Twist()
 TWIST_FWD:Twist              = Twist()
