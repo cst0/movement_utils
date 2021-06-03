@@ -15,6 +15,7 @@ from typing import Tuple
 from math import asin, atan2, degrees, sqrt
 
 # set these via rosparam
+SCALING_FACTOR:int           = 1
 LINEAR_TRAVEL_PER_STEP:int   = 0
 LINEAR_TRAVEL_THRESHOLD:int  = 0
 LINEAR_VEL:int               = 0
@@ -62,9 +63,10 @@ def pythag(start:Point, end:Point):
 
 def get_position():
     point = Point()
-    point.x = CURRENT_ROS_POSITION[_POINT].x - START_POSITION[_POINT].x
-    point.y = CURRENT_ROS_POSITION[_POINT].y - START_POSITION[_POINT].y
-    point.z = CURRENT_ROS_POSITION[_POINT].z - START_POSITION[_POINT].z
+    point.x = (CURRENT_ROS_POSITION[_POINT].x - START_POSITION[_POINT].x) * SCALING_FACTOR
+    point.y = (CURRENT_ROS_POSITION[_POINT].y - START_POSITION[_POINT].y) * SCALING_FACTOR
+    point.z = (CURRENT_ROS_POSITION[_POINT].z - START_POSITION[_POINT].z) * SCALING_FACTOR
+    # scaling only affects linear movement, otherwise we don't scale properly
     deg = CURRENT_ROS_POSITION[_DEG].data - START_POSITION[_DEG].data
     return (point, Float32(deg))
 
@@ -139,6 +141,7 @@ def setup_parameters():
     global TWIST_CCW
     global TWIST_CW
 
+    SCALING_FACTOR           = rospy.get_param("movement_utils/scaling_factor", 1)
     LINEAR_TRAVEL_PER_STEP   = rospy.get_param("movement_utils/linear_travel_per_step", 1)
     LINEAR_TRAVEL_THRESHOLD  = rospy.get_param("movement_utils/linear_travel_threshold", 0.01)
     LINEAR_VEL               = rospy.get_param("movement_utils/linear_vel", 0.2)
