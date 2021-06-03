@@ -1,0 +1,7 @@
+linear_travel_per_step   : 1
+linear_travel_threshold  : 0.01
+linear_vel               : 0.2
+
+angular_travel_per_step  : 20
+angular_travel_threshold : 2
+angular_vel              : 0.35
