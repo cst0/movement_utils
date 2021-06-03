@@ -14,17 +14,18 @@ from typing import Tuple
 
 from math import asin, atan2, degrees, sqrt
 
-LINEAR_TRAVEL_PER_STEP = 1
-LINEAR_TRAVEL_THRESHOLD = 0.01
-LINEAR_VEL = 0.2
-TWIST_FWD = Twist(Vector3(LINEAR_VEL, 0, 0), Vector3(0, 0, 0))
+# set these via rosparam
+LINEAR_TRAVEL_PER_STEP:int   = 0
+LINEAR_TRAVEL_THRESHOLD:int  = 0
+LINEAR_VEL:int               = 0
+ANGULAR_TRAVEL_PER_STEP:int  = 0
+ANGULAR_TRAVEL_THRESHOLD:int = 0
+ANGULAR_VEL:int              = 0
+TWIST_CCW:Twist              = Twist()
+TWIST_CW:Twist               = Twist()
+TWIST_FWD:Twist              = Twist()
 
-ANGULAR_TRAVEL_PER_STEP = 20  # deg
-ANGULAR_TRAVEL_THRESHOLD = 2
-ANGULAR_VEL = 0.35
-TWIST_CCW = Twist(Vector3(0, 0, 0), Vector3(0, 0, ANGULAR_VEL))
-TWIST_CW = Twist(Vector3(0, 0, 0), Vector3(0, 0, -ANGULAR_VEL))
-
+# handy constants
 _X=0
 _Y=1
 _Z=2
@@ -126,8 +127,33 @@ def handle_sub_odom(data:Odometry):
     CURRENT_ROS_POSITION = (point, Float32(yaw))
 
 
+def setup_parameters():
+    global SCALING_FACTOR
+    global LINEAR_TRAVEL_PER_STEP
+    global LINEAR_TRAVEL_THRESHOLD
+    global LINEAR_VEL
+    global ANGULAR_TRAVEL_PER_STEP
+    global ANGULAR_TRAVEL_THRESHOLD
+    global ANGULAR_VEL
+    global TWIST_FWD
+    global TWIST_CCW
+    global TWIST_CW
+
+    LINEAR_TRAVEL_PER_STEP   = rospy.get_param("movement_utils/linear_travel_per_step", 1)
+    LINEAR_TRAVEL_THRESHOLD  = rospy.get_param("movement_utils/linear_travel_threshold", 0.01)
+    LINEAR_VEL               = rospy.get_param("movement_utils/linear_vel", 0.2)
+    ANGULAR_TRAVEL_PER_STEP  = rospy.get_param("movement_utils/angular_travel_per_step", 20)
+    ANGULAR_TRAVEL_THRESHOLD = rospy.get_param("movement_utils/angular_travel_threshold", 2)
+    ANGULAR_VEL              = rospy.get_param("movement_utils/angular_vel", 0.35)
+
+    TWIST_FWD = Twist(Vector3(LINEAR_VEL, 0, 0), Vector3(0, 0, 0))
+    TWIST_CCW = Twist(Vector3(0, 0, 0), Vector3(0, 0, ANGULAR_VEL))
+    TWIST_CW = Twist(Vector3(0, 0, 0), Vector3(0, 0, -ANGULAR_VEL))
+
 def movement_wrapper_node():
     rospy.init_node('movement_wrapper')
+    setup_parameters()
+
     service_reset_odom    = rospy.Service('reset_odom',    ResetOdom,    handle_service_reset_odom)
     service_get_position  = rospy.Service('get_position',  GetPosition,  handle_service_get_position)
     service_goto_position = rospy.Service('goto_relative', GoToRelative, handle_service_goto_relative)
