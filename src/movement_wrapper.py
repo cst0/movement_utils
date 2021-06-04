@@ -14,17 +14,33 @@ from typing import Tuple
 
 from math import asin, atan2, degrees, sqrt
 
+from sys import version_info
+if version_info.major is 2:
+    raise Exception("We're using function annotations here, which prevents the code from running in Python2.")
+
 # set these via rosparam
-SCALING_FACTOR:float           = 1
-LINEAR_TRAVEL_PER_STEP:float   = 0
-LINEAR_TRAVEL_THRESHOLD:float  = 0
-LINEAR_VEL:float               = 0
-ANGULAR_TRAVEL_PER_STEP:float  = 0
-ANGULAR_TRAVEL_THRESHOLD:float = 0
-ANGULAR_VEL:float              = 0
-TWIST_CCW:Twist              = Twist()
-TWIST_CW:Twist               = Twist()
-TWIST_FWD:Twist              = Twist()
+if version_info.minor < 6:
+    SCALING_FACTOR           = 1.0
+    LINEAR_TRAVEL_PER_STEP   = 0.0
+    LINEAR_TRAVEL_THRESHOLD  = 0.0
+    LINEAR_VEL               = 0.0
+    ANGULAR_TRAVEL_PER_STEP  = 0.0
+    ANGULAR_TRAVEL_THRESHOLD = 0.0
+    ANGULAR_VEL              = 0.0
+    TWIST_CCW                = Twist()
+    TWIST_CW                 = Twist()
+    TWIST_FWD                = Twist()
+else:
+    SCALING_FACTOR:float           = 1.0
+    LINEAR_TRAVEL_PER_STEP:float   = 0.0
+    LINEAR_TRAVEL_THRESHOLD:float  = 0.0
+    LINEAR_VEL:float               = 0.0
+    ANGULAR_TRAVEL_PER_STEP:float  = 0.0
+    ANGULAR_TRAVEL_THRESHOLD:float = 0.0
+    ANGULAR_VEL:float              = 0.0
+    TWIST_CCW:Twist              = Twist()
+    TWIST_CW:Twist               = Twist()
+    TWIST_FWD:Twist              = Twist()
 
 # handy constants
 _X=0
@@ -165,6 +181,7 @@ def movement_wrapper_node():
     global PUB_CMDVEL
     PUB_CMDVEL            = rospy.Publisher('cmd_vel',     Twist, queue_size=1)
 
+    rospy.loginfo("movement_wrapper node ready to go!")
     rospy.spin()
 
     rospy.loginfo("Told to shut down, closing subs/pubs/services.")
