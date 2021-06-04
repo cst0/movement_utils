@@ -72,9 +72,7 @@ def get_position() -> Tuple[Point, Float32]:
     point.z = (CURRENT_ROS_POSITION[_POINT].z - START_POSITION[_POINT].z) * SCALING_FACTOR
     # scaling only affects linear movement, otherwise we don't scale properly
     deg = CURRENT_ROS_POSITION[_DEG].data - START_POSITION[_DEG].data
-    deg_f = Float32()
-    deg_f.data = deg
-    return (point, deg_f)
+    return (point, Float32(deg))
 
 
 def handle_service_reset_odom(req:ResetOdomRequest):
@@ -89,7 +87,7 @@ def handle_service_get_position(req:GetPositionRequest):
     position = get_position()
     reply = GetPositionResponse()
     reply.point = position[_POINT]
-    reply.degrees = Float32(position[_DEG])
+    reply.degrees = position[_DEG]
     return reply
 
 
@@ -173,6 +171,8 @@ def movement_wrapper_node():
     global PUB_CMDVEL
     PUB_CMDVEL            = rospy.Publisher('cmd_vel',     Twist, queue_size=1)
 
+    # zero the node while we're starting up
+    handle_service_reset_odom(ResetOdomRequest())
     rospy.loginfo("movement_wrapper node ready to go!")
     rospy.spin()
 
