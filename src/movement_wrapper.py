@@ -4,7 +4,7 @@ import rospy
 
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point, Quaternion, Twist, Vector3
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Bool
 
 from movement_utils.srv import ResetOdom, ResetOdomRequest, ResetOdomResponse
 from movement_utils.srv import GetPosition, GetPositionRequest, GetPositionResponse
@@ -19,28 +19,20 @@ if version_info.major is 2:
     raise Exception("We're using function annotations here, which prevents the code from running in Python2.")
 
 # set these via rosparam
-if version_info.minor < 6:
-    SCALING_FACTOR           = 1.0
-    LINEAR_TRAVEL_PER_STEP   = 0.0
-    LINEAR_TRAVEL_THRESHOLD  = 0.0
-    LINEAR_VEL               = 0.0
-    ANGULAR_TRAVEL_PER_STEP  = 0.0
-    ANGULAR_TRAVEL_THRESHOLD = 0.0
-    ANGULAR_VEL              = 0.0
-    TWIST_CCW                = Twist()
-    TWIST_CW                 = Twist()
-    TWIST_FWD                = Twist()
-else:
-    SCALING_FACTOR:float           = 1.0
-    LINEAR_TRAVEL_PER_STEP:float   = 0.0
-    LINEAR_TRAVEL_THRESHOLD:float  = 0.0
-    LINEAR_VEL:float               = 0.0
-    ANGULAR_TRAVEL_PER_STEP:float  = 0.0
-    ANGULAR_TRAVEL_THRESHOLD:float = 0.0
-    ANGULAR_VEL:float              = 0.0
-    TWIST_CCW:Twist              = Twist()
-    TWIST_CW:Twist               = Twist()
-    TWIST_FWD:Twist              = Twist()
+SCALING_FACTOR           = 1.0
+LINEAR_TRAVEL_PER_STEP   = 0.0
+LINEAR_TRAVEL_THRESHOLD  = 0.0
+LINEAR_VEL               = 0.0
+ANGULAR_TRAVEL_PER_STEP  = 0.0
+ANGULAR_TRAVEL_THRESHOLD = 0.0
+ANGULAR_VEL              = 0.0
+TWIST_CCW                = Twist()
+TWIST_CW                 = Twist()
+TWIST_FWD                = Twist()
+START_POSITION           = (Point(), Float32())
+CURRENT_ROS_POSITION     = (Point(), Float32())
+
+PUB_CMDVEL = None
 
 # handy constants
 _X=0
@@ -48,10 +40,6 @@ _Y=1
 _Z=2
 _POINT=0
 _DEG=1
-
-START_POSITION:Tuple[Point, Float32] = (Point(), Float32())
-CURRENT_ROS_POSITION:Tuple[Point, Float32] = (Point(), Float32())
-PUB_CMDVEL = None
 
 
 def euler_from_quaternion(q:Quaternion):
@@ -77,7 +65,7 @@ def pythag(start:Point, end:Point):
     d_y = start.y - end.y
     return sqrt(d_x*d_x + d_y*d_y)
 
-def get_position():
+def get_position() -> Tuple[Point, Float32]:
     point = Point()
     point.x = (CURRENT_ROS_POSITION[_POINT].x - START_POSITION[_POINT].x) * SCALING_FACTOR
     point.y = (CURRENT_ROS_POSITION[_POINT].y - START_POSITION[_POINT].y) * SCALING_FACTOR
@@ -130,7 +118,9 @@ def handle_service_goto_relative(req:GoToRelativeRequest):
             PUB_CMDVEL.publish(msg)
             rate.sleep()
 
-    return GoToRelativeResponse(True)
+    resp = GoToRelativeResponse()
+    resp.state = Bool(True)
+    return resp
 
 
 def handle_sub_odom(data:Odometry):
