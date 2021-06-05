@@ -81,9 +81,7 @@ def get_position() -> Tuple[Point, float]:
 def reset_odom():
     global START_POSITION
     global CURRENT_ROS_POSITION
-    global ODOM_Z_FACTOR
 
-    ODOM_Z_FACTOR = RECEIVED_ODOM.twist.twist.angular.z
     PUB_ODOM_RESET.publish(Empty())
     START_POSITION = get_position()
     CURRENT_ROS_POSITION = (Point(), 0.0)
@@ -145,9 +143,6 @@ def handle_service_goto_relative(req:GoToRelativeRequest):
 
 
 def handle_sub_odom(data:Odometry):
-    global RECEIVED_ODOM
-
-    RECEIVED_ODOM = data
     point = Point()
     point.x = data.pose.pose.position.x
     point.y = data.pose.pose.position.y
