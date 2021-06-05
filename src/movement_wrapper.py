@@ -4,7 +4,7 @@ import rospy
 
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point, Quaternion, Twist, Vector3
-from std_msgs.msg import Float32, Bool
+from std_msgs.msg import Float32, Bool, Empty
 
 from movement_utils.srv import ResetOdom, ResetOdomRequest, ResetOdomResponse
 from movement_utils.srv import GetPosition, GetPositionRequest, GetPositionResponse
@@ -29,10 +29,13 @@ ANGULAR_VEL              = 0.0
 TWIST_CCW                = Twist()
 TWIST_CW                 = Twist()
 TWIST_FWD                = Twist()
-START_POSITION           = (Point(), Float32())
-CURRENT_ROS_POSITION     = (Point(), Float32())
+START_POSITION           = (Point(), 0.0)
+CURRENT_ROS_POSITION     = (Point(), 0.0)
+
+HZ = 20
 
 PUB_CMDVEL = None
+PUB_ODOM_RESET = None
 
 # handy constants
 _X=0
@@ -65,20 +68,30 @@ def pythag(start:Point, end:Point):
     d_y = start.y - end.y
     return sqrt(d_x*d_x + d_y*d_y)
 
-def get_position() -> Tuple[Point, Float32]:
+def get_position() -> Tuple[Point, float]:
     point = Point()
     point.x = (CURRENT_ROS_POSITION[_POINT].x - START_POSITION[_POINT].x) * SCALING_FACTOR
     point.y = (CURRENT_ROS_POSITION[_POINT].y - START_POSITION[_POINT].y) * SCALING_FACTOR
     point.z = (CURRENT_ROS_POSITION[_POINT].z - START_POSITION[_POINT].z) * SCALING_FACTOR
     # scaling only affects linear movement, otherwise we don't scale properly
-    deg = CURRENT_ROS_POSITION[_DEG].data - START_POSITION[_DEG].data
-    return (point, Float32(deg))
+    deg = CURRENT_ROS_POSITION[_DEG]
+    return (point, deg)
+
+
+def update_angle(amount):
+    global CURRENT_ROS_POSITION
+    CURRENT_ROS_POSITION = (CURRENT_ROS_POSITION[_POINT], CURRENT_ROS_POSITION[_DEG]+amount)
 
 
 def handle_service_reset_odom(req:ResetOdomRequest):
-    req.empty # ignore empty request
     global START_POSITION
+    global CURRENT_ROS_POSITION
+    req.empty # ignore empty request
+
+    PUB_ODOM_RESET.publish(Empty())
     START_POSITION = get_position()
+    CURRENT_ROS_POSITION = (Point(), 0.0)
+
     return ResetOdomResponse()
 
 
@@ -87,7 +100,7 @@ def handle_service_get_position(req:GetPositionRequest):
     position = get_position()
     reply = GetPositionResponse()
     reply.point = position[_POINT]
-    reply.degrees = position[_DEG]
+    reply.degrees = Float32(position[_DEG])
     return reply
 
 
@@ -109,13 +122,16 @@ def handle_service_goto_relative(req:GoToRelativeRequest):
             rate.sleep()
 
     if req.movement == req.CCWISE or req.movement == req.CWISE:
-        rate = rospy.Rate(20)
+        rate = rospy.Rate(HZ)
         start_deg = get_position()[_DEG]
         traveled_degs = 0
         while traveled_degs < ANGULAR_TRAVEL_PER_STEP - ANGULAR_TRAVEL_THRESHOLD:
-            traveled_degs = abs(start_deg.data - get_position()[_DEG].data)
+            traveled_degs = abs(start_deg - get_position()[_DEG])
             msg = TWIST_CCW if req.movement == req.CCWISE else TWIST_CW
             PUB_CMDVEL.publish(msg)
+            # we're going to make the ok-ish assumption that the rate takes exactly the time specified.
+            # it's not true, but we're doing things low-precision enough that who cares.
+            update_angle(msg.angular.z * (1/HZ))
             rate.sleep()
 
     resp = GoToRelativeResponse()
@@ -129,10 +145,11 @@ def handle_sub_odom(data:Odometry):
     point.y = data.pose.pose.position.y
     point.z = data.pose.pose.position.z
 
-    yaw = degrees(euler_from_quaternion(data.pose.pose.orientation)[_Z])
+    # commented out b/c massive odom drift on turtlebot, let's use manual updates instead
+    #yaw = degrees(euler_from_quaternion(data.pose.pose.orientation)[_Z])
 
     global CURRENT_ROS_POSITION
-    CURRENT_ROS_POSITION = (point, Float32(yaw))
+    CURRENT_ROS_POSITION = (point, CURRENT_ROS_POSITION[_DEG])
 
 
 def setup_parameters():
@@ -163,13 +180,15 @@ def movement_wrapper_node():
     rospy.init_node('movement_wrapper')
     setup_parameters()
 
-    service_reset_odom    = rospy.Service('reset_odom',    ResetOdom,    handle_service_reset_odom)
-    service_get_position  = rospy.Service('get_position',  GetPosition,  handle_service_get_position)
-    service_goto_position = rospy.Service('goto_relative', GoToRelative, handle_service_goto_relative)
+    service_reset_odom    = rospy.Service('/movement_wrapper/reset_odom',    ResetOdom,    handle_service_reset_odom)
+    service_get_position  = rospy.Service('/movement_wrapper/get_position',  GetPosition,  handle_service_get_position)
+    service_goto_position = rospy.Service('/movement_wrapper/goto_relative', GoToRelative, handle_service_goto_relative)
 
-    sub_current_position  = rospy.Subscriber('odom',       Odometry,     handle_sub_odom, queue_size=1)
+    sub_current_position  = rospy.Subscriber('odom',          Odometry,     handle_sub_odom, queue_size=1)
     global PUB_CMDVEL
-    PUB_CMDVEL            = rospy.Publisher('cmd_vel',     Twist, queue_size=1)
+    PUB_CMDVEL            = rospy.Publisher('cmd_vel',        Twist, queue_size=1)
+    global PUB_ODOM_RESET
+    PUB_ODOM_RESET        = rospy.Publisher('reset_odometry', Empty, queue_size=1)
 
     # zero the node while we're starting up
     handle_service_reset_odom(ResetOdomRequest())
