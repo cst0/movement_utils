@@ -134,7 +134,7 @@ def handle_service_goto_relative(req:GoToRelativeRequest):
             PUB_CMDVEL.publish(msg)
             # we're going to make the ok-ish assumption that the rate takes exactly the time specified.
             # it's not true, but we're doing things low-precision enough that who cares.
-            update_angle(degrees(msg.angular.z) * (1/HZ))
+            update_angle(degrees(msg.angular.z)/2 * (1/HZ))
             rate.sleep()
 
     resp = GoToRelativeResponse()
