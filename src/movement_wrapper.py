@@ -36,6 +36,8 @@ HZ = 20
 
 PUB_CMDVEL = None
 PUB_ODOM_RESET = None
+ODOM_Z_FACTOR = 0.0
+RECEIVED_ODOM = Odometry(0)
 
 # handy constants
 _X=0
@@ -78,20 +80,25 @@ def get_position() -> Tuple[Point, float]:
     return (point, deg)
 
 
+def reset_odom():
+    global START_POSITION
+    global CURRENT_ROS_POSITION
+    global ODOM_Z_FACTOR
+
+    ODOM_Z_FACTOR = RECEIVED_ODOM.twist.twist.angular.z
+    PUB_ODOM_RESET.publish(Empty())
+    START_POSITION = get_position()
+    CURRENT_ROS_POSITION = (Point(), 0.0)
+
+
 def update_angle(amount):
     global CURRENT_ROS_POSITION
     CURRENT_ROS_POSITION = (CURRENT_ROS_POSITION[_POINT], CURRENT_ROS_POSITION[_DEG]+amount)
 
 
 def handle_service_reset_odom(req:ResetOdomRequest):
-    global START_POSITION
-    global CURRENT_ROS_POSITION
     req.empty # ignore empty request
-
-    PUB_ODOM_RESET.publish(Empty())
-    START_POSITION = get_position()
-    CURRENT_ROS_POSITION = (Point(), 0.0)
-
+    reset_odom()
     return ResetOdomResponse()
 
 
@@ -131,7 +138,7 @@ def handle_service_goto_relative(req:GoToRelativeRequest):
             PUB_CMDVEL.publish(msg)
             # we're going to make the ok-ish assumption that the rate takes exactly the time specified.
             # it's not true, but we're doing things low-precision enough that who cares.
-            update_angle(degrees(msg.angular.z) * (1/HZ))
+            # update_angle(degrees(msg.angular.z) * (1/HZ))
             rate.sleep()
 
     resp = GoToRelativeResponse()
@@ -140,16 +147,24 @@ def handle_service_goto_relative(req:GoToRelativeRequest):
 
 
 def handle_sub_odom(data:Odometry):
+    global RECEIVED_ODOM
+    time_since_odom = \
+            (data.header.stamp.secs + data.header.stamp.nsecs) - \
+            (RECEIVED_ODOM.header.stamp.secs + RECEIVED_ODOM.header.stamp.nsecs)
+    true_angular_vel = data.twist.twist.angular.z - ODOM_Z_FACTOR
+    true_angular_travel = true_angular_vel * time_since_odom
+    yaw = degrees(true_angular_travel)
+
+    RECEIVED_ODOM = data
     point = Point()
     point.x = data.pose.pose.position.x
     point.y = data.pose.pose.position.y
     point.z = data.pose.pose.position.z
 
-    # commented out b/c massive odom drift on turtlebot, let's use manual updates instead
     #yaw = degrees(euler_from_quaternion(data.pose.pose.orientation)[_Z])
 
     global CURRENT_ROS_POSITION
-    CURRENT_ROS_POSITION = (point, CURRENT_ROS_POSITION[_DEG])
+    CURRENT_ROS_POSITION = (point, yaw)
 
 
 def setup_parameters():
