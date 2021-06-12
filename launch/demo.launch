@@ -1,0 +1,11 @@
+<launch>
+  <include file="$(find turtlebot_bringup)/launch/minimal.launch" />
+  <include file="$(find qr_state_reader)/launch/rs_camera.launch" />
+
+  <include file="$(find movement_utils)/launch/movement_wrapper.launch" >
+    <arg name="cmd_vel" value="/cmd_vel_mux/input/teleop"/>
+  </include>
+
+  <node name="qr_state_read_node" pkg="qr_state_reader" type="qr_state_node.py" output="screen" />
+  <node name="movement_wrapper" pkg="movement_utils" type="movement_wrapper.py" output="screen"/>
+</launch>
