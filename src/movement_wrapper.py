@@ -167,7 +167,7 @@ def setup_parameters():
     global TWIST_CW
 
     SCALING_FACTOR           = rospy.get_param("movement_utils/scaling_factor", 1)
-    LINEAR_TRAVEL_PER_STEP   = rospy.get_param("movement_utils/linear_travel_per_step", 0.2)
+    LINEAR_TRAVEL_PER_STEP   = rospy.get_param("movement_utils/linear_travel_per_step", 0.25)
     LINEAR_TRAVEL_THRESHOLD  = rospy.get_param("movement_utils/linear_travel_threshold", 0.01)
     LINEAR_VEL               = rospy.get_param("movement_utils/linear_vel", 0.2)
     ANGULAR_TRAVEL_PER_STEP  = rospy.get_param("movement_utils/angular_travel_per_step", 20)
