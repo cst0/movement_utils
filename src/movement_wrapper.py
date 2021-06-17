@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 
+import sys
 import rospy
 
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Point, Quaternion, Twist, Vector3
+from geometry_msgs.msg import Point, Quaternion, Twist, Vector3, Pose2D
 from std_msgs.msg import Float32, Bool, Empty
 
 from movement_utils.srv import ResetOdom, ResetOdomRequest, ResetOdomResponse
 from movement_utils.srv import GetPosition, GetPositionRequest, GetPositionResponse
 from movement_utils.srv import GoToRelative, GoToRelativeRequest, GoToRelativeResponse
 
-from typing import Tuple
+from typing import Tuple, Union
 
 from math import asin, atan2, degrees, sqrt
 
@@ -155,16 +156,21 @@ def handle_service_goto_relative(req: GoToRelativeRequest):
     return resp
 
 
-def handle_sub_odom(data: Odometry):
+def handle_sub_odom(data):  # data may be a Pose2D or Odometry type
     point = Point()
-    point.x = data.pose.pose.position.x
-    point.y = data.pose.pose.position.y
-    point.z = data.pose.pose.position.z
-
-    # yaw = degrees(euler_from_quaternion(data.pose.pose.orientation)[_Z])
+    yaw = 0
+    if type(data) == Odometry:
+        point.x = data.pose.pose.position.x
+        point.y = data.pose.pose.position.y
+        yaw = CURRENT_ROS_POSITION[_DEG]
+        yaw = degrees(euler_from_quaternion(data.pose.pose.orientation)[_Z])
+    elif type(data) == Pose2D:
+        point.x = data.x
+        point.y = data.y
+        yaw = degrees(data.theta)
 
     global CURRENT_ROS_POSITION
-    CURRENT_ROS_POSITION = (point, CURRENT_ROS_POSITION[_DEG])
+    CURRENT_ROS_POSITION = (point, yaw)
 
 
 def setup_parameters():
@@ -178,6 +184,7 @@ def setup_parameters():
     global TWIST_FWD
     global TWIST_CCW
     global TWIST_CW
+    global USE_POSE2D
 
     SCALING_FACTOR = rospy.get_param("movement_utils/scaling_factor", 1)
     LINEAR_TRAVEL_PER_STEP = rospy.get_param(
@@ -199,6 +206,8 @@ def setup_parameters():
     TWIST_CCW = Twist(Vector3(0, 0, 0), Vector3(0, 0, ANGULAR_VEL))
     TWIST_CW = Twist(Vector3(0, 0, 0), Vector3(0, 0, -ANGULAR_VEL))
 
+    USE_POSE2D = rospy.get_param("movement_utils/use_pose2d", False)
+
 
 def movement_wrapper_node():
     rospy.init_node("movement_wrapper")
@@ -214,9 +223,15 @@ def movement_wrapper_node():
         "/movement_wrapper/goto_relative", GoToRelative, handle_service_goto_relative
     )
 
-    sub_current_position = rospy.Subscriber(
-        "odom", Odometry, handle_sub_odom, queue_size=1
-    )
+    if USE_POSE2D:
+        sub_current_position = rospy.Subscriber(
+            "pose2D", Pose2D, handle_sub_odom, queue_size=1
+        )
+    else:
+        sub_current_position = rospy.Subscriber(
+            "odom", Odometry, handle_sub_odom, queue_size=1
+        )
+
     global PUB_CMDVEL
     PUB_CMDVEL = rospy.Publisher("cmd_vel", Twist, queue_size=1)
     global PUB_ODOM_RESET

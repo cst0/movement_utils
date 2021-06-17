@@ -1,10 +1,12 @@
 <launch>
-  <include file="$(find turtlebot_bringup)/launch/minimal.launch" />
-  <include file="$(find qr_state_reader)/launch/rs_camera.launch" />
+  <!--include file="$(find turtlebot_bringup)/launch/minimal.launch" /-->
+  <!--include file="$(find qr_state_reader)/launch/rs_camera.launch" /-->
 
+  <rosparam command="load" file="$(find movement_utils)/config/default.yaml" />
   <include file="$(find movement_utils)/launch/movement_wrapper.launch" >
     <arg name="cmd_vel" value="/cmd_vel_mux/input/teleop"/>
   </include>
 
+  <node name="laser_scan_matcher" pkg="laser_scan_matcher" type="laser_scan_matcher_node" output="screen" />
   <node name="qr_state_read_node" pkg="qr_state_reader" type="qr_state_node.py" output="screen" />
 </launch>
