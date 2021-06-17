@@ -1,4 +1,4 @@
-linear_travel_per_step   : 0.2
+linear_travel_per_step   : 0.25
 linear_travel_threshold  : 0.01
 linear_vel               : 0.2
 
