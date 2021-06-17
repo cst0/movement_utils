@@ -148,7 +148,8 @@ def handle_service_goto_relative(req: GoToRelativeRequest):
             PUB_CMDVEL.publish(msg)
             # we're going to make the ok-ish assumption that the rate takes exactly the time specified.
             # it's not true, but we're doing things low-precision enough that who cares.
-            update_angle(degrees(msg.angular.z) / 2 * (1 / HZ))
+            if not USE_POSE2D:
+                update_angle(degrees(msg.angular.z) / 2 * (1 / HZ))
             rate.sleep()
 
     resp = GoToRelativeResponse()
@@ -157,19 +158,19 @@ def handle_service_goto_relative(req: GoToRelativeRequest):
 
 
 def handle_sub_odom(data):  # data may be a Pose2D or Odometry type
+    global CURRENT_ROS_POSITION
     point = Point()
     yaw = 0
     if type(data) == Odometry:
         point.x = data.pose.pose.position.x
         point.y = data.pose.pose.position.y
         yaw = CURRENT_ROS_POSITION[_DEG]
-        yaw = degrees(euler_from_quaternion(data.pose.pose.orientation)[_Z])
+        #yaw = degrees(euler_from_quaternion(data.pose.pose.orientation)[_Z])
     elif type(data) == Pose2D:
         point.x = data.x
         point.y = data.y
         yaw = degrees(data.theta)
 
-    global CURRENT_ROS_POSITION
     CURRENT_ROS_POSITION = (point, yaw)
 
 
