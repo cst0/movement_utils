@@ -15,22 +15,25 @@ from typing import Tuple
 from math import asin, atan2, degrees, sqrt
 
 from sys import version_info
+
 if version_info.major is 2:
-    raise Exception("We're using function annotations here, which prevents the code from running in Python2.")
+    raise Exception(
+        "We're using function annotations here, which prevents the code from running in Python2."
+    )
 
 # set these via rosparam
-SCALING_FACTOR           = 1.0
-LINEAR_TRAVEL_PER_STEP   = 0.0
-LINEAR_TRAVEL_THRESHOLD  = 0.0
-LINEAR_VEL               = 0.0
-ANGULAR_TRAVEL_PER_STEP  = 0.0
+SCALING_FACTOR = 1.0
+LINEAR_TRAVEL_PER_STEP = 0.0
+LINEAR_TRAVEL_THRESHOLD = 0.0
+LINEAR_VEL = 0.0
+ANGULAR_TRAVEL_PER_STEP = 0.0
 ANGULAR_TRAVEL_THRESHOLD = 0.0
-ANGULAR_VEL              = 0.0
-TWIST_CCW                = Twist()
-TWIST_CW                 = Twist()
-TWIST_FWD                = Twist()
-START_POSITION           = (Point(), 0.0)
-CURRENT_ROS_POSITION     = (Point(), 0.0)
+ANGULAR_VEL = 0.0
+TWIST_CCW = Twist()
+TWIST_CW = Twist()
+TWIST_FWD = Twist()
+START_POSITION = (Point(), 0.0)
+CURRENT_ROS_POSITION = (Point(), 0.0)
 
 HZ = 20
 
@@ -38,14 +41,14 @@ PUB_CMDVEL = None
 PUB_ODOM_RESET = None
 
 # handy constants
-_X=0
-_Y=1
-_Z=2
-_POINT=0
-_DEG=1
+_X = 0
+_Y = 1
+_Z = 2
+_POINT = 0
+_DEG = 1
 
 
-def euler_from_quaternion(q:Quaternion):
+def euler_from_quaternion(q: Quaternion):
     # standard euler to quat function
     t0 = +2.0 * (q.w * q.x + q.y * q.z)
     t1 = +1.0 - 2.0 * (q.x * q.x + q.y * q.y)
@@ -63,16 +66,23 @@ def euler_from_quaternion(q:Quaternion):
     return roll_x, pitch_y, yaw_z
 
 
-def pythag(start:Point, end:Point):
+def pythag(start: Point, end: Point):
     d_x = start.x - end.x
     d_y = start.y - end.y
-    return sqrt(d_x*d_x + d_y*d_y)
+    return sqrt(d_x * d_x + d_y * d_y)
+
 
 def get_position() -> Tuple[Point, float]:
     point = Point()
-    point.x = (CURRENT_ROS_POSITION[_POINT].x - START_POSITION[_POINT].x) * SCALING_FACTOR
-    point.y = (CURRENT_ROS_POSITION[_POINT].y - START_POSITION[_POINT].y) * SCALING_FACTOR
-    point.z = (CURRENT_ROS_POSITION[_POINT].z - START_POSITION[_POINT].z) * SCALING_FACTOR
+    point.x = (
+        CURRENT_ROS_POSITION[_POINT].x - START_POSITION[_POINT].x
+    ) * SCALING_FACTOR
+    point.y = (
+        CURRENT_ROS_POSITION[_POINT].y - START_POSITION[_POINT].y
+    ) * SCALING_FACTOR
+    point.z = (
+        CURRENT_ROS_POSITION[_POINT].z - START_POSITION[_POINT].z
+    ) * SCALING_FACTOR
     # scaling only affects linear movement, otherwise we don't scale properly
     deg = CURRENT_ROS_POSITION[_DEG]
     return (point, deg)
@@ -89,17 +99,20 @@ def reset_odom():
 
 def update_angle(amount):
     global CURRENT_ROS_POSITION
-    CURRENT_ROS_POSITION = (CURRENT_ROS_POSITION[_POINT], CURRENT_ROS_POSITION[_DEG]+amount)
+    CURRENT_ROS_POSITION = (
+        CURRENT_ROS_POSITION[_POINT],
+        CURRENT_ROS_POSITION[_DEG] + amount,
+    )
 
 
-def handle_service_reset_odom(req:ResetOdomRequest):
-    req.empty # ignore empty request
+def handle_service_reset_odom(req: ResetOdomRequest):
+    req.empty  # ignore empty request
     reset_odom()
     return ResetOdomResponse()
 
 
-def handle_service_get_position(req:GetPositionRequest):
-    req.empty # ignore empty request
+def handle_service_get_position(req: GetPositionRequest):
+    req.empty  # ignore empty request
     position = get_position()
     reply = GetPositionResponse()
     reply.point = position[_POINT]
@@ -107,7 +120,7 @@ def handle_service_get_position(req:GetPositionRequest):
     return reply
 
 
-def handle_service_goto_relative(req:GoToRelativeRequest):
+def handle_service_goto_relative(req: GoToRelativeRequest):
     if PUB_CMDVEL is None:
         return GoToRelativeRequest(False)
 
@@ -134,7 +147,7 @@ def handle_service_goto_relative(req:GoToRelativeRequest):
             PUB_CMDVEL.publish(msg)
             # we're going to make the ok-ish assumption that the rate takes exactly the time specified.
             # it's not true, but we're doing things low-precision enough that who cares.
-            update_angle(degrees(msg.angular.z)/2 * (1/HZ))
+            update_angle(degrees(msg.angular.z) / 2 * (1 / HZ))
             rate.sleep()
 
     resp = GoToRelativeResponse()
@@ -142,13 +155,13 @@ def handle_service_goto_relative(req:GoToRelativeRequest):
     return resp
 
 
-def handle_sub_odom(data:Odometry):
+def handle_sub_odom(data: Odometry):
     point = Point()
     point.x = data.pose.pose.position.x
     point.y = data.pose.pose.position.y
     point.z = data.pose.pose.position.z
 
-    #yaw = degrees(euler_from_quaternion(data.pose.pose.orientation)[_Z])
+    # yaw = degrees(euler_from_quaternion(data.pose.pose.orientation)[_Z])
 
     global CURRENT_ROS_POSITION
     CURRENT_ROS_POSITION = (point, CURRENT_ROS_POSITION[_DEG])
@@ -166,31 +179,48 @@ def setup_parameters():
     global TWIST_CCW
     global TWIST_CW
 
-    SCALING_FACTOR           = rospy.get_param("movement_utils/scaling_factor", 1)
-    LINEAR_TRAVEL_PER_STEP   = rospy.get_param("movement_utils/linear_travel_per_step", 0.25)
-    LINEAR_TRAVEL_THRESHOLD  = rospy.get_param("movement_utils/linear_travel_threshold", 0.01)
-    LINEAR_VEL               = rospy.get_param("movement_utils/linear_vel", 0.2)
-    ANGULAR_TRAVEL_PER_STEP  = rospy.get_param("movement_utils/angular_travel_per_step", 20)
-    ANGULAR_TRAVEL_THRESHOLD = rospy.get_param("movement_utils/angular_travel_threshold", 2)
-    ANGULAR_VEL              = rospy.get_param("movement_utils/angular_vel", 0.35)
+    SCALING_FACTOR = rospy.get_param("movement_utils/scaling_factor", 1)
+    LINEAR_TRAVEL_PER_STEP = rospy.get_param(
+        "movement_utils/linear_travel_per_step", 0.25
+    )
+    LINEAR_TRAVEL_THRESHOLD = rospy.get_param(
+        "movement_utils/linear_travel_threshold", 0.01
+    )
+    LINEAR_VEL = rospy.get_param("movement_utils/linear_vel", 0.2)
+    ANGULAR_TRAVEL_PER_STEP = rospy.get_param(
+        "movement_utils/angular_travel_per_step", 20
+    )
+    ANGULAR_TRAVEL_THRESHOLD = rospy.get_param(
+        "movement_utils/angular_travel_threshold", 2
+    )
+    ANGULAR_VEL = rospy.get_param("movement_utils/angular_vel", 0.35)
 
     TWIST_FWD = Twist(Vector3(LINEAR_VEL, 0, 0), Vector3(0, 0, 0))
     TWIST_CCW = Twist(Vector3(0, 0, 0), Vector3(0, 0, ANGULAR_VEL))
     TWIST_CW = Twist(Vector3(0, 0, 0), Vector3(0, 0, -ANGULAR_VEL))
 
+
 def movement_wrapper_node():
-    rospy.init_node('movement_wrapper')
+    rospy.init_node("movement_wrapper")
     setup_parameters()
 
-    service_reset_odom    = rospy.Service('/movement_wrapper/reset_odom',    ResetOdom,    handle_service_reset_odom)
-    service_get_position  = rospy.Service('/movement_wrapper/get_position',  GetPosition,  handle_service_get_position)
-    service_goto_position = rospy.Service('/movement_wrapper/goto_relative', GoToRelative, handle_service_goto_relative)
+    service_reset_odom = rospy.Service(
+        "/movement_wrapper/reset_odom", ResetOdom, handle_service_reset_odom
+    )
+    service_get_position = rospy.Service(
+        "/movement_wrapper/get_position", GetPosition, handle_service_get_position
+    )
+    service_goto_position = rospy.Service(
+        "/movement_wrapper/goto_relative", GoToRelative, handle_service_goto_relative
+    )
 
-    sub_current_position  = rospy.Subscriber('odom',          Odometry,     handle_sub_odom, queue_size=1)
+    sub_current_position = rospy.Subscriber(
+        "odom", Odometry, handle_sub_odom, queue_size=1
+    )
     global PUB_CMDVEL
-    PUB_CMDVEL            = rospy.Publisher('cmd_vel',        Twist, queue_size=1)
+    PUB_CMDVEL = rospy.Publisher("cmd_vel", Twist, queue_size=1)
     global PUB_ODOM_RESET
-    PUB_ODOM_RESET        = rospy.Publisher('reset_odometry', Empty, queue_size=1)
+    PUB_ODOM_RESET = rospy.Publisher("reset_odometry", Empty, queue_size=1)
 
     # zero the node while we're starting up
     handle_service_reset_odom(ResetOdomRequest())
