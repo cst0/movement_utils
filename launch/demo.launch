@@ -1,8 +1,10 @@
 <launch>
-  <!--include file="$(find turtlebot_bringup)/launch/minimal.launch" /-->
-  <!--include file="$(find qr_state_reader)/launch/rs_camera.launch" /-->
-
   <rosparam command="load" file="$(find movement_utils)/config/default.yaml" />
+
+  <include file="$(find turtlebot_bringup)/launch/minimal.launch" />
+  <include file="$(find qr_state_reader)/launch/rs_camera.launch" />
+  <include file="$(find rplidar_ros)/launch/rplidar_a3.launch" />
+
   <include file="$(find movement_utils)/launch/movement_wrapper.launch" >
     <arg name="cmd_vel" value="/cmd_vel_mux/input/teleop"/>
   </include>

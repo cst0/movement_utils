@@ -1,5 +1,6 @@
 <launch>
   <rosparam command="load" file="$(find movement_utils)/config/default.yaml" />
+
   <arg name="cmd_vel" default="/cmd_vel" />
 
   <node name="movement_wrapper" pkg="movement_utils" type="movement_wrapper.py" output="screen">

@@ -1,3 +1,9 @@
+fixed_frame: "world"
+base_frame: "base_link"
+use_imu: false
+use_odom: true
+use_vel: true
+
 movement_utils:
     linear_travel_per_step   : 0.25
     linear_travel_threshold  : 0.01
@@ -8,8 +14,6 @@ movement_utils:
     scaling_factor           : 1
     use_pose2d               : true
 
-fixed_frame: "world"
-base_frame: "base_link"
-use_imu: false
-use_odom: true
-use_vel: true
+rplidarNode:
+    serial_port: "/dev/ttyUSB1"
+
