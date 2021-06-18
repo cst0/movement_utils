@@ -5,7 +5,7 @@ use_odom: true
 use_vel: true
 
 movement_utils:
-    linear_travel_per_step   : 0.25
+    linear_travel_per_step   : 0.13
     linear_travel_threshold  : 0.01
     linear_vel               : 0.2
     angular_travel_per_step  : 20

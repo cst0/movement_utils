@@ -9,7 +9,7 @@
     <arg name="cmd_vel" value="/cmd_vel_mux/input/teleop"/>
   </include>
 
-  <node pkg="tf2_ros" type="static_transform_publisher" name="laser_link" args="0 0 0 0 0 0 1 base_link laser  " />
+  <node pkg="tf2_ros" type="static_transform_publisher" name="laser_link" args="0 0 0 0 0 0 1 base_link laser" />
   <node name="laser_scan_matcher" pkg="laser_scan_matcher" type="laser_scan_matcher_node" output="screen" />
   <node name="qr_state_read_node" pkg="qr_state_reader" type="qr_state_node.py" output="screen" />
 </launch>
