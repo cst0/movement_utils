@@ -1,7 +1,7 @@
 <launch>
   <rosparam command="load" file="$(find movement_utils)/config/default.yaml" />
 
-  <include file="$(find turtlebot_bringup)/launch/minimal.launch" />
+  <include file="$(find movement_utils)/launch/custom_turtlebot.launch" />
   <include file="$(find qr_state_reader)/launch/rs_camera.launch" />
   <include file="$(find rplidar_ros)/launch/rplidar_a3.launch" />
 
