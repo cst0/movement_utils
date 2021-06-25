@@ -1,8 +1,8 @@
-int8 STOP=0
-int8 FORWARD=1
-int8 CWISE=2
-int8 CCWISE=3
+Move movement
 
-int8 movement
+# if nothing is specified here, we'll fall back to the default values from the
+# param server. Otherwise, though, we'll use the value here (either in meters
+# or radians)
+std_msgs/Float32 custom_distance
 ---
 std_msgs/Bool state
