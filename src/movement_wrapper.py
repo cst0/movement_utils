@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import sys
 import rospy
 
 from nav_msgs.msg import Odometry
@@ -11,7 +10,7 @@ from movement_utils.srv import ResetOdom, ResetOdomRequest, ResetOdomResponse
 from movement_utils.srv import GetPosition, GetPositionRequest, GetPositionResponse
 from movement_utils.srv import GoToRelative, GoToRelativeRequest, GoToRelativeResponse
 
-from typing import Tuple, Union
+from typing import Tuple
 
 from math import asin, atan2, degrees, sqrt
 
@@ -42,9 +41,6 @@ PUB_CMDVEL = None
 PUB_ODOM_RESET = None
 
 # handy constants
-_X = 0
-_Y = 1
-_Z = 2
 _POINT = 0
 _DEG = 1
 
@@ -129,20 +125,29 @@ def handle_service_goto_relative(req: GoToRelativeRequest):
         # pub message with all 0's
         PUB_CMDVEL.publish(Twist())
 
+    linear_travel:float = LINEAR_TRAVEL_PER_STEP
+    angular_travel:float = ANGULAR_TRAVEL_PER_STEP
+    if req.custom_distance != 0:
+        linear_travel = float(req.custom_distance.data)
+        angular_travel = float(req.custom_distance.data )
+
     if req.movement.val == req.movement.FORWARD:
         rate = rospy.Rate(20)
         start_point = get_position()[_POINT]
         traveled_distance = 0
-        while traveled_distance < abs(LINEAR_TRAVEL_PER_STEP - LINEAR_TRAVEL_THRESHOLD):
+        while traveled_distance < abs(linear_travel - LINEAR_TRAVEL_THRESHOLD):
             traveled_distance = abs(pythag(start_point, get_position()[_POINT]))
             PUB_CMDVEL.publish(TWIST_FWD)
             rate.sleep()
 
-    if req.movement.val == req.movement.CCWISE or req.movement.val == req.movement.CWISE:
+    if (
+        req.movement.val == req.movement.CCWISE
+        or req.movement.val == req.movement.CWISE
+    ):
         rate = rospy.Rate(HZ)
         start_deg = get_position()[_DEG]
         traveled_degs = 0
-        while traveled_degs < ANGULAR_TRAVEL_PER_STEP - ANGULAR_TRAVEL_THRESHOLD:
+        while traveled_degs < angular_travel - ANGULAR_TRAVEL_THRESHOLD:
             traveled_degs = abs(start_deg - get_position()[_DEG])
             msg = TWIST_CCW if req.movement.val == req.movement.CCWISE else TWIST_CW
             PUB_CMDVEL.publish(msg)
@@ -165,7 +170,8 @@ def handle_sub_odom(data):  # data may be a Pose2D or Odometry type
         point.x = data.pose.pose.position.x
         point.y = data.pose.pose.position.y
         yaw = CURRENT_ROS_POSITION[_DEG]
-        #yaw = degrees(euler_from_quaternion(data.pose.pose.orientation)[_Z])
+        # we're updating this value via pose2d potentially, so this is handled above. not clean but w/e
+        # yaw = degrees(euler_from_quaternion(data.pose.pose.orientation)[_Z])
     elif type(data) == Pose2D:
         point.x = data.x
         point.y = data.y
