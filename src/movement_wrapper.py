@@ -123,13 +123,13 @@ def handle_service_get_position(req: GetPositionRequest):
 
 def handle_service_goto_relative(req: GoToRelativeRequest):
     if PUB_CMDVEL is None:
-        return GoToRelativeRequest(False)
+        return GoToRelativeResponse(False)
 
-    if req.movement == req.STOP:
+    if req.movement.val == req.movement.STOP:
         # pub message with all 0's
         PUB_CMDVEL.publish(Twist())
 
-    if req.movement == req.FORWARD:
+    if req.movement.val == req.movement.FORWARD:
         rate = rospy.Rate(20)
         start_point = get_position()[_POINT]
         traveled_distance = 0
@@ -138,13 +138,13 @@ def handle_service_goto_relative(req: GoToRelativeRequest):
             PUB_CMDVEL.publish(TWIST_FWD)
             rate.sleep()
 
-    if req.movement == req.CCWISE or req.movement == req.CWISE:
+    if req.movement.val == req.movement.CCWISE or req.movement.val == req.movement.CWISE:
         rate = rospy.Rate(HZ)
         start_deg = get_position()[_DEG]
         traveled_degs = 0
         while traveled_degs < ANGULAR_TRAVEL_PER_STEP - ANGULAR_TRAVEL_THRESHOLD:
             traveled_degs = abs(start_deg - get_position()[_DEG])
-            msg = TWIST_CCW if req.movement == req.CCWISE else TWIST_CW
+            msg = TWIST_CCW if req.movement.val == req.movement.CCWISE else TWIST_CW
             PUB_CMDVEL.publish(msg)
             # we're going to make the ok-ish assumption that the rate takes exactly the time specified.
             # it's not true, but we're doing things low-precision enough that who cares.
