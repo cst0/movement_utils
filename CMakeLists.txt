@@ -60,6 +60,7 @@ add_service_files(
   FILES
   GetPosition.srv
   GoToRelative.srv
+  LinearVel.srv
   ResetOdom.srv
 )
 
