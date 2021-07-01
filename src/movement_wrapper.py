@@ -11,9 +11,7 @@ from movement_utils.srv import GetPosition, GetPositionRequest, GetPositionRespo
 from movement_utils.srv import GoToRelative, GoToRelativeRequest, GoToRelativeResponse
 
 from typing import Tuple
-
 from math import asin, atan2, degrees, sqrt
-
 from sys import version_info
 
 if version_info.major is 2:
@@ -125,11 +123,11 @@ def handle_service_goto_relative(req: GoToRelativeRequest):
         # pub message with all 0's
         PUB_CMDVEL.publish(Twist())
 
-    linear_travel:float = LINEAR_TRAVEL_PER_STEP
-    angular_travel:float = ANGULAR_TRAVEL_PER_STEP
+    linear_travel: float = LINEAR_TRAVEL_PER_STEP
+    angular_travel: float = ANGULAR_TRAVEL_PER_STEP
     if req.custom_distance != 0:
         linear_travel = float(req.custom_distance.data)
-        angular_travel = float(req.custom_distance.data )
+        angular_travel = float(req.custom_distance.data)
 
     if req.movement.val == req.movement.FORWARD:
         rate = rospy.Rate(20)
