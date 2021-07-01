@@ -9,6 +9,7 @@ from std_msgs.msg import Float32, Bool, Empty
 from movement_utils.srv import ResetOdom, ResetOdomRequest, ResetOdomResponse
 from movement_utils.srv import GetPosition, GetPositionRequest, GetPositionResponse
 from movement_utils.srv import GoToRelative, GoToRelativeRequest, GoToRelativeResponse
+from movement_utils.srv import LinearVel, LinearVelRequest, LinearVelResponse
 
 from typing import Tuple
 from math import asin, atan2, degrees, sqrt
@@ -160,6 +161,16 @@ def handle_service_goto_relative(req: GoToRelativeRequest):
     return resp
 
 
+def handle_service_linear_velocity(goal: LinearVelRequest) -> LinearVelResponse:
+    try:
+        msg = Twist()
+        msg.linear.x = goal.cmd_vel.data
+        PUB_CMDVEL.publish(msg)
+    except:
+        return LinearVelResponse(False)
+    return LinearVelResponse(True)
+
+
 def handle_sub_odom(data):  # data may be a Pose2D or Odometry type
     global CURRENT_ROS_POSITION
     point = Point()
@@ -226,6 +237,9 @@ def movement_wrapper_node():
     )
     service_goto_position = rospy.Service(
         "/movement_wrapper/goto_relative", GoToRelative, handle_service_goto_relative
+    )
+    service_goto_position = rospy.Service(
+        "/movement_wrapper/linear_velocity", LinearVel, handle_service_linear_velocity
     )
 
     if USE_POSE2D:
