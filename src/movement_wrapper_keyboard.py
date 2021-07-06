@@ -4,6 +4,7 @@ import rospy
 import termios, select, sys, tty
 
 from nav_msgs.msg import Odometry
+from std_msgs.msg import Float32
 from movement_utils.srv import GoToRelative, GoToRelativeRequest
 from movement_utils.srv import LinearVel, LinearVelRequest
 
@@ -21,30 +22,31 @@ R/F: Increase/Decrease angular travel
 
 Z:   Send GoToRelative of 0
 X:   Send LinearVel of 0
-J:   Send GoToRelative request based off of current settings
-K:   Send LinearVel request based off of current settings
-U:   Send GoToRelative request based off of default parameters
-I:   Send LinearVel request based off of default parameters
+J:   Send GoToRelative linear request based off of current parameters
+K:   Send LinearVel linear request based off of current parameters
+U:   Send GoToRelative angular request based off of current parameters
 """
 RUNNING_CMD = "Ready"
+LINEAR_SPEED = 0
+ANGULAR_SPEED = 0
+LINEAR_TRAVEL = 0
+ANGULAR_TRAVEL = 0
 
 
 class validRequests(Enum):
     GoToRelativeZero = 0
     LinearVelZero = 1
-    GoToRelativeCustom = 2
-    LinearVelCustom = 3
-    GoToRelativeDefault = 4
-    LinearVelDefault = 5
+    GoToRelativeLinearCustom = 2
+    LinearVelLinearCustom = 3
+    GoToRelativeAngularCustom = 4
 
 
 messageSendBindings = {
     "z": validRequests.GoToRelativeZero,
     "x": validRequests.LinearVelZero,
-    "j": validRequests.GoToRelativeCustom,
-    "k": validRequests.LinearVelCustom,
-    "u": validRequests.GoToRelativeDefault,
-    "i": validRequests.LinearVelDefault,
+    "j": validRequests.GoToRelativeLinearCustom,
+    "k": validRequests.LinearVelLinearCustom,
+    "u": validRequests.GoToRelativeAngularCustom,
 }
 
 messageModLegends = {
@@ -59,14 +61,14 @@ messageModLegends = {
 }
 
 messageModBindings = {
-    "q": (1.1, 0, 0, 0, 0, 0, 0, 0),
-    "a": (0, 0.9, 0, 0, 0, 0, 0, 0),
-    "w": (0, 0, 1.1, 0, 0, 0, 0, 0),
-    "s": (0, 0, 0, 0.9, 0, 0, 0, 0),
-    "e": (0, 0, 0, 0, 1.1, 0, 0, 0),
-    "d": (0, 0, 0, 0, 0, 0.9, 0, 0),
-    "r": (0, 0, 0, 0, 0, 0, 1.1, 0),
-    "f": (0, 0, 0, 0, 0, 0, 0, 0.9),
+    "q": (1.1, 0, 0, 0),
+    "a": (0.9, 0, 0, 0),
+    "w": (0, 1.1, 0, 0),
+    "s": (0, 0.9, 0, 0),
+    "e": (0, 0, 1.1, 0),
+    "d": (0, 0, 0.9, 0),
+    "r": (0, 0, 0, 1.1),
+    "f": (0, 0, 0, 0.9),
 }
 
 
@@ -87,23 +89,46 @@ def odom_callback(msg: Odometry):
 
 
 def sendMessage(key):
-    pass
-    # messageSendBindings.get(
+    req = messageSendBindings.get(key)
+    if req is None:
+        return
 
+    gtrreq = GoToRelativeRequest()
+    lvreq = LinearVelRequest()
 
-##= {
-##        'z':validRequests.GoToRelativeZero,
-##        'x':validRequests.LinearVelZero,
-##        'j':validRequests.GoToRelativeCustom,
-##        'k':validRequests.LinearVelCustom,
-##        'u':validRequests.GoToRelativeDefault,
-##        'i':validRequests.LinearVelDefault,
-##    }
+    if req is validRequests.GoToRelativeZero:
+        GOTO_RELATIVE_CLIENT(gtrreq)
+    if req is validRequests.LinearVelZero:
+        LINEAR_VEL_CLIENT(lvreq)
+    if req is validRequests.GoToRelativeLinearCustom:
+        gtrreq.custom_distance = Float32(LINEAR_TRAVEL)
+        gtrreq.movement.val = gtrreq.movement.FORWARD
+        GOTO_RELATIVE_CLIENT(gtrreq)
+    if req is validRequests.LinearVelLinearCustom:
+        lvreq.cmd_vel = Float32(LINEAR_SPEED)
+        LINEAR_VEL_CLIENT(lvreq)
+    if req is validRequests.GoToRelativeAngularCustom:
+        gtrreq.custom_distance = Float32(abs(ANGULAR_TRAVEL))
+        gtrreq.movement.val = (
+            gtrreq.movement.CWISE if ANGULAR_TRAVEL > 0 else gtrreq.movement.CCWISE
+        )
+        GOTO_RELATIVE_CLIENT(gtrreq)
 
 
 def modMessage(key):
+    req = messageModBindings.get(key)
+    if req is None:
+        return
 
-    pass
+    global LINEAR_SPEED
+    global LINEAR_TRAVEL
+    global ANGULAR_SPEED
+    global ANGULAR_TRAVEL
+
+    LINEAR_SPEED *= req[0]
+    LINEAR_TRAVEL *= req[1]
+    ANGULAR_SPEED *= req[2]
+    ANGULAR_TRAVEL *= req[3]
 
 
 def main():
