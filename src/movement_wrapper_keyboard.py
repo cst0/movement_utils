@@ -16,8 +16,8 @@ USAGE = """
 Make and send service calls to the movement wrapper utility.
 
 Q/A: Increase/Decrease linear speed
-W/S: Increase/Decrease angular speed
-E/D: Increase/Decrease linear travel
+W/S: Increase/Decrease linear travel
+E/D: Increase/Decrease angular speed
 R/F: Increase/Decrease angular travel
 
 Z:   Send GoToRelative of 0
@@ -109,6 +109,7 @@ def sendMessage(key):
         RUNNING_CMD = "LinearVelZero"
         LINEAR_VEL_CLIENT(lvreq)
         RUNNING_CMD = "Ready"
+
     if req is validRequests.GoToRelativeLinearCustom:
         RUNNING_CMD = "LinearVelLinearCustom " + str()
         gtrreq.custom_distance = Float32(PARAMS["LINEAR_TRAVEL"])

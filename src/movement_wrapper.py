@@ -33,7 +33,7 @@ TWIST_CW = Twist()
 TWIST_FWD = Twist()
 START_POSITION = (Point(), 0.0)
 CURRENT_ROS_POSITION = (Point(), 0.0)
-
+ODOM_TIMESTAMP = rospy.Time.from_sec(0)
 HZ = 20
 
 PUB_CMDVEL = None
@@ -66,6 +66,11 @@ def pythag(start: Point, end: Point):
     d_x = start.x - end.x
     d_y = start.y - end.y
     return sqrt(d_x * d_x + d_y * d_y)
+
+
+def getting_position_updates() -> bool:
+    # we're getting valid position updates assuming we've gotten one in the last 1/5 of a second.
+    return (rospy.Time.now() - ODOM_TIMESTAMP) < rospy.Duration(0.2)
 
 
 def get_position() -> Tuple[Point, float]:
@@ -119,7 +124,8 @@ def handle_service_get_position(req: GetPositionRequest):
 def handle_service_goto_relative(req: GoToRelativeRequest):
     resp = GoToRelativeResponse()
     rospy.loginfo("GoToRelative request. "+str(req.custom_distance)+" val: "+str(req.movement.val))
-    if PUB_CMDVEL is None:
+    if PUB_CMDVEL is None or not getting_position_updates():
+        rospy.logerr("unable to process request (are cmd_vel and odom topics connected?)")
         resp.state = Bool(False)
         return resp
 
@@ -184,6 +190,8 @@ def handle_service_linear_velocity(goal: LinearVelRequest) -> LinearVelResponse:
 
 def handle_sub_odom(data):  # data may be a Pose2D or Odometry type
     global CURRENT_ROS_POSITION
+    global ODOM_TIMESTAMP
+    ODOM_TIMESTAMP = rospy.Time.now()
     point = Point()
     yaw = 0
     if type(data) == Odometry:
