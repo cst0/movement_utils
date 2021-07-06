@@ -100,18 +100,28 @@ def sendMessage(key):
     gtrreq = GoToRelativeRequest()
     lvreq = LinearVelRequest()
 
+    global RUNNING_CMD
     if req is validRequests.GoToRelativeZero:
+        RUNNING_CMD = "GoToRelativeZero"
         GOTO_RELATIVE_CLIENT(gtrreq)
+        RUNNING_CMD = "Ready"
     if req is validRequests.LinearVelZero:
+        RUNNING_CMD = "LinearVelZero"
         LINEAR_VEL_CLIENT(lvreq)
+        RUNNING_CMD = "Ready"
     if req is validRequests.GoToRelativeLinearCustom:
+        RUNNING_CMD = "LinearVelLinearCustom " + str()
         gtrreq.custom_distance = Float32(PARAMS["LINEAR_TRAVEL"])
         gtrreq.movement.val = gtrreq.movement.FORWARD
         GOTO_RELATIVE_CLIENT(gtrreq)
+        RUNNING_CMD = "Ready"
     if req is validRequests.LinearVelLinearCustom:
+        RUNNING_CMD = "Ready"
         lvreq.cmd_vel = Float32(PARAMS["LINEAR_SPEED"])
         LINEAR_VEL_CLIENT(lvreq)
+        RUNNING_CMD = "Ready"
     if req is validRequests.GoToRelativeAngularCustom:
+        RUNNING_CMD = "Ready"
         gtrreq.custom_distance = Float32(abs(PARAMS["ANGULAR_TRAVEL"]))
         gtrreq.movement.val = (
             gtrreq.movement.CWISE
@@ -119,6 +129,7 @@ def sendMessage(key):
             else gtrreq.movement.CCWISE
         )
         GOTO_RELATIVE_CLIENT(gtrreq)
+        RUNNING_CMD = "Ready"
 
 
 def modMessage(key):
@@ -145,7 +156,9 @@ def main():
         "movement_wrapper/goto_relative", GoToRelative
     )
     global LINEAR_VEL_CLIENT
-    LINEAR_VEL_CLIENT = rospy.ServiceProxy("movement_wrapper/linear_vel", LinearVel)
+    LINEAR_VEL_CLIENT = rospy.ServiceProxy(
+        "movement_wrapper/linear_velocity", LinearVel
+    )
     global ODOM_SUB
     global CURRENT_ODOM
     ODOM_SUB = rospy.Subscriber("odom", Odometry, odom_callback)

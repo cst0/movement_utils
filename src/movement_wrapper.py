@@ -117,58 +117,69 @@ def handle_service_get_position(req: GetPositionRequest):
 
 
 def handle_service_goto_relative(req: GoToRelativeRequest):
-    if PUB_CMDVEL is None:
-        return GoToRelativeResponse(False)
-
-    if req.movement.val == req.movement.STOP:
-        # pub message with all 0's
-        PUB_CMDVEL.publish(Twist())
-
-    linear_travel: float = LINEAR_TRAVEL_PER_STEP
-    angular_travel: float = ANGULAR_TRAVEL_PER_STEP
-    if req.custom_distance != 0:
-        linear_travel = float(req.custom_distance.data)
-        angular_travel = float(req.custom_distance.data)
-
-    if req.movement.val == req.movement.FORWARD:
-        rate = rospy.Rate(20)
-        start_point = get_position()[_POINT]
-        traveled_distance = 0
-        while traveled_distance < abs(linear_travel - LINEAR_TRAVEL_THRESHOLD):
-            traveled_distance = abs(pythag(start_point, get_position()[_POINT]))
-            PUB_CMDVEL.publish(TWIST_FWD)
-            rate.sleep()
-
-    if (
-        req.movement.val == req.movement.CCWISE
-        or req.movement.val == req.movement.CWISE
-    ):
-        rate = rospy.Rate(HZ)
-        start_deg = get_position()[_DEG]
-        traveled_degs = 0
-        while traveled_degs < angular_travel - ANGULAR_TRAVEL_THRESHOLD:
-            traveled_degs = abs(start_deg - get_position()[_DEG])
-            msg = TWIST_CCW if req.movement.val == req.movement.CCWISE else TWIST_CW
-            PUB_CMDVEL.publish(msg)
-            # we're going to make the ok-ish assumption that the rate takes exactly the time specified.
-            # it's not true, but we're doing things low-precision enough that who cares.
-            if not USE_POSE2D:
-                update_angle(degrees(msg.angular.z) / 2 * (1 / HZ))
-            rate.sleep()
-
     resp = GoToRelativeResponse()
-    resp.state = Bool(True)
+    rospy.loginfo("GoToRelative request. "+str(req.custom_distance)+" val: "+str(req.movement.val))
+    if PUB_CMDVEL is None:
+        resp.state = Bool(False)
+        return resp
+
+    try:
+        if req.movement.val == req.movement.STOP:
+            # pub message with all 0's
+            PUB_CMDVEL.publish(Twist())
+
+        linear_travel: float = LINEAR_TRAVEL_PER_STEP
+        angular_travel: float = ANGULAR_TRAVEL_PER_STEP
+        if req.custom_distance != 0:
+            linear_travel = float(req.custom_distance.data)
+            angular_travel = float(req.custom_distance.data)
+
+        if req.movement.val == req.movement.FORWARD:
+            rate = rospy.Rate(20)
+            start_point = get_position()[_POINT]
+            traveled_distance = 0
+            while traveled_distance < abs(linear_travel - LINEAR_TRAVEL_THRESHOLD):
+                traveled_distance = abs(pythag(start_point, get_position()[_POINT]))
+                PUB_CMDVEL.publish(TWIST_FWD)
+                rate.sleep()
+
+        if (
+            req.movement.val == req.movement.CCWISE
+            or req.movement.val == req.movement.CWISE
+        ):
+            rate = rospy.Rate(HZ)
+            start_deg = get_position()[_DEG]
+            traveled_degs = 0
+            while traveled_degs < angular_travel - ANGULAR_TRAVEL_THRESHOLD:
+                traveled_degs = abs(start_deg - get_position()[_DEG])
+                msg = TWIST_CCW if req.movement.val == req.movement.CCWISE else TWIST_CW
+                PUB_CMDVEL.publish(msg)
+                # we're going to make the ok-ish assumption that the rate takes exactly the time specified.
+                # it's not true, but we're doing things low-precision enough that who cares.
+                if not USE_POSE2D:
+                    update_angle(degrees(msg.angular.z) / 2 * (1 / HZ))
+                rate.sleep()
+        resp.state = Bool(True)
+
+    except Exception as e:
+        rospy.logerr(e)
+        resp.state = Bool(False)
+
     return resp
 
 
 def handle_service_linear_velocity(goal: LinearVelRequest) -> LinearVelResponse:
+    resp = LinearVelResponse()
+    rospy.loginfo("Linear velocity request :"+str(goal.cmd_vel))
     try:
         msg = Twist()
         msg.linear.x = goal.cmd_vel.data
         PUB_CMDVEL.publish(msg)
-    except:
-        return LinearVelResponse(False)
-    return LinearVelResponse(True)
+    except Exception as e:
+        rospy.logerr(e)
+        resp.executed = Bool(False)
+    resp.executed = Bool(True)
+    return resp
 
 
 def handle_sub_odom(data):  # data may be a Pose2D or Odometry type
