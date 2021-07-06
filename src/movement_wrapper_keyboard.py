@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from enum import Enum
 import rospy
-import termios, select, sys, tty
+import termios, select, sys, tty, os
 
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32
@@ -27,10 +27,13 @@ K:   Send LinearVel linear request based off of current parameters
 U:   Send GoToRelative angular request based off of current parameters
 """
 RUNNING_CMD = "Ready"
-LINEAR_SPEED = 0
-ANGULAR_SPEED = 0
-LINEAR_TRAVEL = 0
-ANGULAR_TRAVEL = 0
+
+PARAMS = {
+    "LINEAR_SPEED": 1,
+    "LINEAR_TRAVEL": 1,
+    "ANGULAR_SPEED": 1,
+    "ANGULAR_TRAVEL": 1,
+}
 
 
 class validRequests(Enum):
@@ -61,14 +64,14 @@ messageModLegends = {
 }
 
 messageModBindings = {
-    "q": (1.1, 0, 0, 0),
-    "a": (0.9, 0, 0, 0),
-    "w": (0, 1.1, 0, 0),
-    "s": (0, 0.9, 0, 0),
-    "e": (0, 0, 1.1, 0),
-    "d": (0, 0, 0.9, 0),
-    "r": (0, 0, 0, 1.1),
-    "f": (0, 0, 0, 0.9),
+    "q": (1.1, 1, 1, 1),
+    "a": (0.9, 1, 1, 1),
+    "w": (1, 1.1, 1, 1),
+    "s": (1, 0.9, 1, 1),
+    "e": (1, 1, 1.1, 1),
+    "d": (1, 1, 0.9, 1),
+    "r": (1, 1, 1, 1.1),
+    "f": (1, 1, 1, 0.9),
 }
 
 
@@ -91,6 +94,7 @@ def odom_callback(msg: Odometry):
 def sendMessage(key):
     req = messageSendBindings.get(key)
     if req is None:
+        print("invalid input passed into sendMessage")
         return
 
     gtrreq = GoToRelativeRequest()
@@ -101,16 +105,18 @@ def sendMessage(key):
     if req is validRequests.LinearVelZero:
         LINEAR_VEL_CLIENT(lvreq)
     if req is validRequests.GoToRelativeLinearCustom:
-        gtrreq.custom_distance = Float32(LINEAR_TRAVEL)
+        gtrreq.custom_distance = Float32(PARAMS["LINEAR_TRAVEL"])
         gtrreq.movement.val = gtrreq.movement.FORWARD
         GOTO_RELATIVE_CLIENT(gtrreq)
     if req is validRequests.LinearVelLinearCustom:
-        lvreq.cmd_vel = Float32(LINEAR_SPEED)
+        lvreq.cmd_vel = Float32(PARAMS["LINEAR_SPEED"])
         LINEAR_VEL_CLIENT(lvreq)
     if req is validRequests.GoToRelativeAngularCustom:
-        gtrreq.custom_distance = Float32(abs(ANGULAR_TRAVEL))
+        gtrreq.custom_distance = Float32(abs(PARAMS["ANGULAR_TRAVEL"]))
         gtrreq.movement.val = (
-            gtrreq.movement.CWISE if ANGULAR_TRAVEL > 0 else gtrreq.movement.CCWISE
+            gtrreq.movement.CWISE
+            if PARAMS["ANGULAR_TRAVEL"] > 0
+            else gtrreq.movement.CCWISE
         )
         GOTO_RELATIVE_CLIENT(gtrreq)
 
@@ -118,20 +124,19 @@ def sendMessage(key):
 def modMessage(key):
     req = messageModBindings.get(key)
     if req is None:
+        print("invalid input passed into modMessage")
         return
 
-    global LINEAR_SPEED
-    global LINEAR_TRAVEL
-    global ANGULAR_SPEED
-    global ANGULAR_TRAVEL
+    global PARAMS
 
-    LINEAR_SPEED *= req[0]
-    LINEAR_TRAVEL *= req[1]
-    ANGULAR_SPEED *= req[2]
-    ANGULAR_TRAVEL *= req[3]
+    PARAMS["LINEAR_SPEED"] = PARAMS["LINEAR_SPEED"] * req[0]
+    PARAMS["LINEAR_TRAVEL"] = PARAMS["LINEAR_TRAVEL"] * req[1]
+    PARAMS["ANGULAR_SPEED"] = PARAMS["ANGULAR_SPEED"] * req[2]
+    PARAMS["ANGULAR_TRAVEL"] = PARAMS["ANGULAR_TRAVEL"] * req[3]
 
 
 def main():
+    rospy.init_node("movement_wrapper_keyboard")
     key_timeout = rospy.get_param("~key_timeout", 0.0)
     if key_timeout == 0.0:
         key_timeout = None
@@ -147,10 +152,15 @@ def main():
     CURRENT_ODOM = Odometry()
 
     try:
-        print(USAGE)
-        print(RUNNING_CMD)
+        rate = rospy.Rate(20)
         while not rospy.is_shutdown():
+            print(USAGE)
+            print(RUNNING_CMD)
+            for param in PARAMS.keys():
+                print("{:15s}={:5.2f}".format(param, PARAMS[param]))
+
             key = getKey(key_timeout)
+
             if key == "\x03":
                 # ctrl-c, abort
                 raise KeyboardInterrupt
@@ -158,6 +168,8 @@ def main():
                 sendMessage(key.lower())
             elif key.lower() in messageModBindings.keys():
                 modMessage(key.lower())
+            else:
+                print("nothing to do with that input [" + str(key) + "]")
 
     except KeyboardInterrupt:
         rospy.loginfo("told to shutdown, goodbye!")
